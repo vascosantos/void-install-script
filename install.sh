@@ -18,7 +18,6 @@ wipefs --all $DISK
     echo 1   # Partition number
     echo     # Default start sector
     echo +512M  # Partition size
-    echo Y   # Remove vfat signature
     echo t   # Change partition type
     echo ef  # Set type to EFI System (EF00)
 
@@ -32,27 +31,6 @@ wipefs --all $DISK
 
     echo w   # Write changes and exit
 ) | fdisk $DISK
-# fdisk $DISK <<EOFDISK
-# g   # Create a new GPT partition table
-
-# n   # Create EFI partition
-# 1   # Partition number
-#     # Default start sector
-# +512M  # Partition size
-# t   # Change partition type
-# 1   # Select partition 1
-# ef  # Set type to EFI System (EF00)
-
-# n   # Create root partition
-# 2   # Partition number
-#     # Default start sector
-#     # Use the remaining space
-# t   # Change partition type
-# 2   # Select partition 2
-# 83  # Set type to Linux Filesystem (8300)
-
-# w   # Write changes and exit
-# EOFDISK
 
 mkfs.vfat -n EFI -F 32 ${DISK}1
 mkfs.btrfs -L Void ${DISK}2
@@ -84,8 +62,13 @@ sed -i '/^#en_US.UTF-8/s/.//' /mnt/etc/default/libc-locales
 mkdir -pv /mnt/etc/sysctl.d
 echo "kernel.dmesg_restrict=0" > /mnt/etc/sysctl.d/99-dmesg-user.conf
 
+echo "-> Set password for root"
 passwd root -R /mnt
+
 useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth vasco
+echo "-> Set password for vasco"
+passwd vasco -R /mnt
+
 chown root:root /mnt
 chmod 755 /mnt
 echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/10-wheel
@@ -112,7 +95,13 @@ for service in acpid dhcpcd socklog-unix nanoklogd dbus bluetoothd; do
   chroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 xbps-install -r /mnt -Syuv intel-ucode nvidia
-xbps-reconfigure -r /mnt -fa
 
+cat << EOCHROOT >> chroot.sh
+#!/usr/bin/bash
+dracut --regenerate-all --force --hostonly
+update-grub
+grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id=VoidLinux --recheck
+xbps-reconfigure -fa
+EOCHROOT
 
 BTRFS_OPTS=$BTRFS_OPTS PS1='(chroot) # ' chroot /mnt/ /bin/bash
