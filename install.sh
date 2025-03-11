@@ -8,29 +8,17 @@ TIME_ZONE=Europe/Lisbon
 export ARCH=x86_64
 export REPO=https://repo-default.voidlinux.org
 
-# Disk partitioning
-wipefs --all $DISK
-(
-    echo g   # Create a new GPT partition table
-    echo n   # Create EFI partition
-    echo 1   # Partition number
-    echo     # Default start sector
-    echo +512M  # Partition size
-    echo t   # Change partition type
-    echo ef  # Set type to EFI System (EF00)
+# Install gptfdisk on the live system and perform disk partitioning
+xbps-install -Sy gptfdisk
 
-    echo n   # Create root partition
-    echo 2   # Partition number
-    echo     # Default start sector
-    echo     # Use the remaining space
-    echo t   # Change partition type
-    echo 2   # Select partition 2
-    echo 83  # Set type to Linux Filesystem (8300)
-
-    echo w   # Write changes and exit
-) | fdisk $DISK
-mkfs.vfat -n EFI -F 32 ${DISK}1
-mkfs.btrfs -L Void ${DISK}2
+sgdisk -Z ${DISK}
+sgdisk -a 2048 -o ${DISK}
+sgdisk -n 1:0:+512M ${DISK} # /dev/sda1
+sgdisk -n 2:0:0 ${DISK}     # /dev/sda2
+sgdisk -t 1:ef00 ${DISK} 
+sgdisk -t 2:8300 ${DISK} 
+mkfs.vfat -F 32 -n EFI ${DISK}1
+mkfs.btrfs -L Void -f ${DISK}2
 
 # Mount partitions and create subvolumes
 mount -o $BTRFS_OPT ${DISK}2 /mnt
