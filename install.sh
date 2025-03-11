@@ -12,27 +12,47 @@ loadkeys $KEYMAP
 mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 
 wipefs --all $DISK
-fdisk $DISK <<EOFDISK
-g   
+(
+    echo g   # Create a new GPT partition table
+    echo n   # Create EFI partition
+    echo 1   # Partition number
+    echo     # Default start sector
+    echo +512M  # Partition size
+    echo t   # Change partition type
+    echo 1   # Select partition 1
+    echo ef  # Set type to EFI System (EF00)
 
-n   
-1   
-    
-+512M  
-t  
-1  
-ef 
+    echo n   # Create root partition
+    echo 2   # Partition number
+    echo     # Default start sector
+    echo     # Use the remaining space
+    echo t   # Change partition type
+    echo 2   # Select partition 2
+    echo 83  # Set type to Linux Filesystem (8300)
 
-n  
-2 
-   
-  
-t 
-2  
-83 
+    echo w   # Write changes and exit
+) | fdisk $DISK
+# fdisk $DISK <<EOFDISK
+# g   # Create a new GPT partition table
 
-w 
-EOFDISK
+# n   # Create EFI partition
+# 1   # Partition number
+#     # Default start sector
+# +512M  # Partition size
+# t   # Change partition type
+# 1   # Select partition 1
+# ef  # Set type to EFI System (EF00)
+
+# n   # Create root partition
+# 2   # Partition number
+#     # Default start sector
+#     # Use the remaining space
+# t   # Change partition type
+# 2   # Select partition 2
+# 83  # Set type to Linux Filesystem (8300)
+
+# w   # Write changes and exit
+# EOFDISK
 
 mkfs.vfat -n EFI -F 32 ${DISK}1
 mkfs.btrfs -L Void ${DISK}2
