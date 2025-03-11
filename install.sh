@@ -65,7 +65,11 @@ echo "kernel.dmesg_restrict=0" > /mnt/etc/sysctl.d/99-dmesg-user.conf
 echo "-> Set password for root"
 passwd root -R /mnt
 
-useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth vasco
+groupadd -R /mnt socklog
+groupadd -R /mnt libvirt
+groupadd -R /mnt docker
+groupadd -R /mnt bluetooth
+useradd -R /mnt -mG wheel,users,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth vasco
 echo "-> Set password for vasco"
 passwd vasco -R /mnt
 
