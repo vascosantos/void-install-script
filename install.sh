@@ -20,7 +20,6 @@ wipefs --all $DISK
     echo +512M  # Partition size
     echo Y   # Remove vfat signature
     echo t   # Change partition type
-    echo 1   # Select partition 1
     echo ef  # Set type to EFI System (EF00)
 
     echo n   # Create root partition
