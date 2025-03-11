@@ -1,5 +1,5 @@
-#!/usr/bin/env -S sh -xe
-. env.conf
+#!/usr/bin/bash
+source env.conf
 
 sgdisk -Z ${DISK}
 sgdisk -a 2048 -o ${DISK}

@@ -1,5 +1,5 @@
-#!/usr/bin/env -S bash -xe
-. source.conf
+#!/usr/bin/bash
+source env.conf
 
 XBPS_ARCH=x86_64 xbps-install -S -r /mnt -R $REPO_URL ${PKGS}
 
