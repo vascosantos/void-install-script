@@ -1,14 +1,40 @@
 #!/usr/bin/bash
 source env.conf
 
-sgdisk -Z ${DISK}
-sgdisk -a 2048 -o ${DISK}
-sgdisk -n 1:0:+512M ${DISK} # /dev/sda1
-sgdisk -n 2:0:0 ${DISK} # /dev/sda2
+wipefs --all $DISK
+fdisk $DISK <<EOFDISK
+o   # Create a new DOS partition table (use 'g' for GPT)
+g
+
+# Create EFI partition (equivalent to sgdisk -n 1:0:+512M)
+n
+1
+
++512M
+t
+1
+ef  # Set type to EFI System (EF00)
+
+# Create root partition (equivalent to sgdisk -n 2:0:0)
+n
+2
+
+
+t
+2
+83  # Set type to Linux Filesystem (8300)
+
+w   # Write changes and exit
+EOFDISK
+
+# sgdisk -Z ${DISK}
+# sgdisk -a 2048 -o ${DISK}
+# sgdisk -n 1:0:+512M ${DISK} # /dev/sda1
+# sgdisk -n 2:0:0 ${DISK} # /dev/sda2
 mkfs.vfat -F 32 -n ${EFI_LABEL} ${DISK}1
 mkfs.btrfs -L ${ROOT_LABEL} -f ${DISK}2
-sgdisk -t 1:ef00 ${DISK} 
-sgdisk -t 2:8300 ${DISK} 
+# sgdisk -t 1:ef00 ${DISK} 
+# sgdisk -t 2:8300 ${DISK} 
 mount -o ${BTRFS_OPTS} ${DISK}2 /mnt
 mkdir -pv /mnt/boot/efi
 mount -o noatime ${DISK}1 /mnt/boot/efi
