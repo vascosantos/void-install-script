@@ -13,25 +13,25 @@ mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 
 wipefs --all $DISK
 fdisk $DISK <<EOFDISK
-g   # Create a new GPT partition table
+g   
 
-n   # Create EFI partition
-1   # Partition number
-    # Default start sector
-+512M  # Partition size
-t   # Change partition type
-1   # Select partition 1
-ef  # Set type to EFI System (EF00)
+n   
+1   
+    
++512M  
+t  
+1  
+ef 
 
-n   # Create root partition
-2   # Partition number
-    # Default start sector
-    # Use the remaining space
-t   # Change partition type
-2   # Select partition 2
-83  # Set type to Linux Filesystem (8300)
+n  
+2 
+   
+  
+t 
+2  
+83 
 
-w   # Write changes and exit
+w 
 EOFDISK
 
 mkfs.vfat -n EFI -F 32 ${DISK}1
