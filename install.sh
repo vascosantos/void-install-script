@@ -9,7 +9,7 @@ export ARCH=x86_64
 export REPO=https://repo-default.voidlinux.org
 
 # Install gptfdisk on the live system and perform disk partitioning
-xbps-install -Sy gptfdisk
+xbps-install -Suy gptfdisk
 
 sgdisk -Z ${DISK}
 sgdisk -a 2048 -o ${DISK}
@@ -39,7 +39,7 @@ btrfs subvolume create /mnt/var/tmp
 btrfs subvolume create /mnt/var/log
 
 # Install base system
-XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager bash-completion vim 
+XBPS_ARCH=$ARCH xbps-install -Suy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager bash-completion vim 
 for dir in sys dev proc; do mount --rbind /$dir /mnt/$dir; mount --make-rslave /mnt/$dir; done
 cp -L /etc/resolv.conf /mnt/etc/
 
@@ -87,7 +87,7 @@ sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ zswap.enabled=1 zswap.max_pool_perce
 
 # Install repositories
 mkdir -p /mnt/etc/xbps.d
-XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" void-repo-nonfree void-repo-multilib void-repo-multilib-nonfree 
+XBPS_ARCH=$ARCH xbps-install -Suy -r /mnt -R "$REPO/current" void-repo-nonfree void-repo-multilib void-repo-multilib-nonfree 
 
 # Set repository mirrors
 cp /mnt/usr/share/xbps.d/*-repository-*.conf /mnt/etc/xbps.d/
@@ -95,8 +95,8 @@ sed -i "s|https://repo-default.voidlinux.org|$REPO|g" /mnt/etc/xbps.d/*-reposito
 
 
 # Install intel-ucode and nvidia drivers
-# XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv intel-ucode mesa-dri nvidia
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv intel-ucode xf86-video-qxl
+# XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu intel-ucode mesa-dri nvidia
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu intel-ucode xf86-video-qxl
 
 # Configure nvidia, dracut and efibootmgr
 # cat <<EOMODPROBENVIDIACONF >> /mnt/etc/modprobe.d/nvidia.conf
@@ -113,10 +113,10 @@ mkdir -pv /mnt/udev/rules.d
 chroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv gnome bluez pipewire gnome xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts 
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu gnome bluez pipewire gnome xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts 
 
 # Install Flatpak
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv flatpak
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu flatpak
 
 # Generate chroot script
 cat << EOCHROOT > /mnt/chroot.sh
@@ -139,5 +139,7 @@ rm /mnt/chroot.sh
 for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd; do
   chroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
+
+touch /mnt/etc/sv/gdm/down
 
 # Done
