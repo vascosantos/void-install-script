@@ -18,6 +18,7 @@ wipefs --all $DISK
     echo 1   # Partition number
     echo     # Default start sector
     echo +512M  # Partition size
+    echo Y   # Remove vfat signature
     echo t   # Change partition type
     echo 1   # Select partition 1
     echo ef  # Set type to EFI System (EF00)
