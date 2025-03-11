@@ -58,7 +58,8 @@ groupadd -R /mnt socklog
 groupadd -R /mnt libvirt
 groupadd -R /mnt docker
 groupadd -R /mnt bluetooth
-useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth vasco
+groupadd -R /mnt lpadmin
+useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth,lpadmin vasco
 echo "-> Set password for vasco"
 passwd vasco -R /mnt
 
@@ -94,14 +95,15 @@ sed -i "s|https://repo-default.voidlinux.org|$REPO|g" /mnt/etc/xbps.d/*-reposito
 
 
 # Install intel-ucode and nvidia drivers
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv intel-ucode nvidia
+# XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv intel-ucode mesa-dri nvidia
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv intel-ucode xf86-video-qxl
 
 # Configure nvidia, dracut and efibootmgr
-cat <<EOMODPROBENVIDIACONF >> /mnt/etc/modprobe.d/nvidia.conf
-blacklist nouveau
-options nvidia-drm modeset=1
-options nvidia NVreg_UsePageAttributeTable=1
-EOMODPROBENVIDIACONF
+# cat <<EOMODPROBENVIDIACONF >> /mnt/etc/modprobe.d/nvidia.conf
+# blacklist nouveau
+# options nvidia-drm modeset=1
+# options nvidia NVreg_UsePageAttributeTable=1
+# EOMODPROBENVIDIACONF
 cat <<EODRACUTCONF >> /mnt/etc/dracut.conf.d/options.conf
 hostonly=yes
 EODRACUTCONF
@@ -111,7 +113,7 @@ mkdir -pv /mnt/udev/rules.d
 chroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv gnome bluez pipewire gnome
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv gnome bluez pipewire gnome xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts 
 
 # Install Flatpak
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Syuv flatpak
@@ -123,8 +125,8 @@ mount -t efivarfs efivarfs /sys/firmware/efi/efivars
 grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void" --recheck
 dracut --regenerate-all --force
 update-grub
-xbps-reconfigure -fa
 flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+xbps-reconfigure -fa
 EOCHROOT
 
 # Run chroot script
@@ -134,7 +136,7 @@ chroot /mnt bash /chroot.sh
 rm /mnt/chroot.sh
 
 # Install services
-for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm; do
+for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd; do
   chroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 
