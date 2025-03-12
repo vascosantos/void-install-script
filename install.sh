@@ -1,11 +1,10 @@
 #!/usr/bin/bash
 
 #
-# This script installs Void Linux on a Btrfs filesystem with subvolumes
-# and snapshots, a Gnome desktop environment and some basic packages.
+# This script installs Void Linux on a ZFS filesystem, a Gnome desktop environment and some basic packages.
 # It configures the system for zram swap space, and uses NetworkManager and elogind.
-# Tested on a desktop computer with a wired Ethernet connection, Intel CPU (i7-12900K) 
-# and Nvidia GPU (GTX 1650 SUPER), using the Void Linux live base image (2025-02-02, glibc, x86_64).
+# Tested on a desktop PC using a wired Ethernet connection, Intel CPU (i7-12900K) and Nvidia GPU (GTX 1650 SUPER). 
+# This is based on the hrmpf rescue system image release 20250228 (https://github.com/leahneukirchen/hrmpf).
 #
 # PLEASE HANDLE WITH CARE AS ALL CONTENTS ON THE SELECTED DISK WILL BE LOST
 #
@@ -20,7 +19,7 @@ REPO=https://repo-default.voidlinux.org
 USER_NAME=vasco
 HOST_NAME=morpheus
 ZRAM_COMPRESSOR=zstd    # zram compression algorithm (see https://github.com/atweiden/zramen/blob/master/zramen or check `man zramctl`)
-ZRAM_INIT_SIZE_PCT=5    # initial zram size as a percentage of total RAM
+ZRAM_INIT_SIZE_PCT=2    # initial zram size as a percentage of total RAM
 ZRAM_MAX_SIZE_MB=16384  # maximum zram size in MB
 
 # Update Void
@@ -50,7 +49,6 @@ mount -o $BTRFS_OPT,subvol=@ ${DISK}2 /mnt
 mkdir /mnt/home
 mkdir /mnt/.snapshots
 mount -o $BTRFS_OPT,subvol=@home ${DISK}2 /mnt/home/
-# mount -o $BTRFS_OPT,subvol=@snapshots ${DISK}2 /mnt/.snapshots/
 mkdir -p /mnt/boot/efi
 mount -o rw,noatime ${DISK}1 /mnt/boot/efi/
 mkdir -p /mnt/var/cache
@@ -109,11 +107,10 @@ tmpfs           /tmp        tmpfs   defaults,noatime,mode=1777      0 0
 EOFSTAB
 
 # Configure zram swap
+sed -i "s/.*ZRAM_COMP_ALGORITHM.*/export ZRAM_COMP_ALGORITHM=$ZRAM_COMPRESSOR/g" /mnt/etc/sv/zramen/conf
 sed -i "s/.*ZRAM_SIZE.*/export ZRAM_SIZE=$ZRAM_INIT_SIZE_PCT/g" /mnt/etc/sv/zramen/conf
 sed -i "s/.*ZRAM_MAX_SIZE.*/export ZRAM_MAX_SIZE=$ZRAM_MAX_SIZE_MB/g" /mnt/etc/sv/zramen/conf
-echo "add_drivers+=\" zram \"" >> /mnt/etc/dracut.conf.d/40-add_zram_driver.conf
-
-# sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ zswap.enabled=1 zswap.compressor=lz4hc&/" /mnt/etc/default/grub
+echo "add_drivers+=\" zram \"" >> /mnt/etc/dracut.conf.d/10-add_zram_driver.conf
 
 # Install repositories
 mkdir -p /mnt/etc/xbps.d
@@ -149,25 +146,11 @@ sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ apparmor=1 security=apparmor&/" /mnt
 # Configure flatpak
 chroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-# Generate chroot script
+# Install Grub and generate initramfs 
 mount -t efivarfs efivarfs /mnt/sys/firmware/efi/efivars
 chroot /mnt grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
 chroot /mnt dracut --regenerate-all --force
 chroot /mnt update-grub
-
-# cat << EOCHROOT > /mnt/chroot.sh
-# #!/usr/bin/bash
-# mount -t efivarfs efivarfs /sys/firmware/efi/efivars
-# grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
-# dracut --regenerate-all --force
-# update-grub
-# EOCHROOT
-
-# Run chroot script
-chroot /mnt bash /chroot.sh
-
-# Cleanup
-rm /mnt/chroot.sh
 
 # Install services
 for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd grub-btrfs zramen; do
@@ -182,7 +165,6 @@ rm -r /mnt/.snapshots
 chroot /mnt snapper -c root create-config /
 btrfs subvolume delete /mnt/.snapshots
 mkdir /mnt/.snapshots
-# sed -i '/@snapshots/s/^#//' /mnt/etc/fstab
 
 # Change vm.swappiness
 mkdir -p /mnt/etc/sysctl.conf.d
