@@ -2,11 +2,12 @@
 
 # Global variables
 DISK=/dev/vda
-export BTRFS_OPT=rw,noatime,discard=async,compress-force=zstd:1,space_cache=v2,commit=120
+BTRFS_OPT=rw,noatime,discard=async,compress-force=zstd:1,space_cache=v2,commit=120
 KEYMAP=us-acentos
 TIME_ZONE=Europe/Lisbon
-export ARCH=x86_64
-export REPO=https://repo-default.voidlinux.org
+ARCH=x86_64
+REPO=https://repo-default.voidlinux.org
+USER_NAME=vasco
 
 # Install gptfdisk on the live system and perform disk partitioning
 xbps-install -Suy gptfdisk
@@ -38,9 +39,11 @@ btrfs subvolume create /mnt/var/cache/xbps
 btrfs subvolume create /mnt/var/tmp
 btrfs subvolume create /mnt/var/log
 
-# Install base system
-XBPS_ARCH=$ARCH xbps-install -Suy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager bash-completion vim 
-for dir in sys dev proc; do mount --rbind /$dir /mnt/$dir; mount --make-rslave /mnt/$dir; done
+# Install base system and some basic packages
+XBPS_ARCH=$ARCH xbps-install -Suy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager
+for dir in sys dev proc; do 
+    mount --rbind /$dir /mnt/$dir; mount --make-rslave /mnt/$dir; 
+done
 cp -L /etc/resolv.conf /mnt/etc/
 
 # Set hostname, timezone and locales
@@ -48,6 +51,9 @@ echo morpheus > /mnt/etc/hostname
 chroot /mnt ln -sf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime
 sed -i '/^#en_US.UTF-8/s/.//' /mnt/etc/default/libc-locales
 XBPS_ARCH=$ARCH xbps-reconfigure -r /mnt -f glibc-locales
+
+# Set keymap
+sed -i "/#KEYMAP=/s/.*/KEYMAP=\"$KEYMAP\"/" /mnt/etc/rc.conf
 
 # Set root password
 echo "-> Set password for root"
@@ -59,9 +65,9 @@ groupadd -R /mnt libvirt
 groupadd -R /mnt docker
 groupadd -R /mnt bluetooth
 groupadd -R /mnt lpadmin
-useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth,lpadmin vasco
-echo "-> Set password for vasco"
-passwd vasco -R /mnt
+useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth,lpadmin $USER_NAME
+echo "-> Set password for $USER_NAME"
+passwd $USER_NAME -R /mnt
 
 # Set ownership and permissions, and enable sudo foe wheel group
 chown root:root /mnt
@@ -76,7 +82,7 @@ cat <<EOFSTAB >> /mnt/etc/fstab
 UUID=$BOOT_UUID /boot/efi   vfat    defaults                        0 2
 UUID=$ROOT_UUID /           btrfs   $BTRFS_OPT,subvol=@             0 0
 UUID=$ROOT_UUID /home       btrfs   $BTRFS_OPT,subvol=@home         0 0
-#UUID=$ROOT_UUID /.snapshots btrfs   $BTRFS_OPT,subvol=@snapshots    0 0
+UUID=$ROOT_UUID /.snapshots btrfs   $BTRFS_OPT,subvol=@snapshots    0 0
 UUID=$ROOT_UUID /var/log    btrfs   $BTRFS_OPT,subvol=@/var/log     0 0
 tmpfs           /tmp        tmpfs   defaults,noatime,mode=1777      0 0
 EOFSTAB
@@ -92,7 +98,6 @@ XBPS_ARCH=$ARCH xbps-install -Suy -r /mnt -R "$REPO/current" void-repo-nonfree v
 # Set repository mirrors
 cp /mnt/usr/share/xbps.d/*-repository-*.conf /mnt/etc/xbps.d/
 sed -i "s|https://repo-default.voidlinux.org|$REPO|g" /mnt/etc/xbps.d/*-repository-*.conf
-
 
 # Install intel-ucode and nvidia drivers
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu intel-ucode mesa-dri nvidia
@@ -112,7 +117,10 @@ mkdir -pv /mnt/udev/rules.d
 chroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic flatpak snapper
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic flatpak snapper bash-completion vim
+
+# Enable AppArmor
+sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ apparmor=1 security=apparmor&/" /mnt/etc/default/grub
 
 # Configure flatpak
 chroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
@@ -145,7 +153,7 @@ rm -r /mnt/.snapshots
 chroot /mnt snapper -c root create-config /
 btrfs subvolume delete /mnt/.snapshots
 mkdir /mnt/.snapshots
-sed -i '/@snapshots/s/^#//' /mnt/etc/fstab
+# sed -i '/@snapshots/s/^#//' /mnt/etc/fstab
 
 # Customize .bashrc
 
