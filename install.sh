@@ -22,7 +22,7 @@ HOST_NAME=morpheus
 SWAP_SIZE_MB=8192
 
 # Update Void
-xbps-install -Su
+xbps-install -Suy
 
 # Install gptfdisk on the live system
 xbps-install -Sy gptfdisk
