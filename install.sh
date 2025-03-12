@@ -19,9 +19,12 @@ ARCH=x86_64
 REPO=https://repo-default.voidlinux.org
 USER_NAME=vasco
 HOST_NAME=morpheus
-SWAP_SIZE_MB=8192
+ZRAM_COMPRESSOR=zstd    # zram compression algorithm (see https://github.com/atweiden/zramen/blob/master/zramen or check `man zramctl`)
+ZRAM_INIT_SIZE_PCT=5    # initial zram size as a percentage of total RAM
+ZRAM_MAX_SIZE_MB=16384  # maximum zram size in MB
 
 # Update Void
+xbps-install -Suy   # might need to run twice to ensure all packages are up-to-date
 xbps-install -Suy
 
 # Install gptfdisk on the live system
@@ -88,8 +91,9 @@ passwd $USER_NAME -R /mnt
 # Set ownership and permissions, and enable sudo for wheel group
 chown root:root /mnt
 chmod 755 /mnt
-echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/10-wheel
-echo "Defaults timestamp_timeout=60" >> /mnt/etc/sudoers.d/10-wheel    # require password every 60 minutes (default is 5)
+echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/10-wheel.conf
+echo "%wheel ALL= (ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot, /sbin/halt" >> /mnt/etc/sudoers.d/10-wheel.conf # allow shutdown, reboot and halt without password
+echo "Defaults timestamp_timeout=60" >> /mnt/etc/sudoers.d/10-wheel.conf    # require password only every 60 minutes (default is 5)
 
 # Write fstab
 export BOOT_UUID=$(blkid -s UUID -o value ${DISK}1)
@@ -105,10 +109,10 @@ tmpfs           /tmp        tmpfs   defaults,noatime,mode=1777      0 0
 EOFSTAB
 
 # Configure zram swap
-sed -i "/ZRAM_SIZE/s/./export ZRAM_SIZE=10/" /mnt/etc/sv/zramen/conf
-sed -i "/ZRAM_MAX_SIZE/s/./export ZRAM_MAX_SIZE=$SWAP_SIZE_MB/" /mnt/etc/sv/zramen/conf
+sed -i "s/.*ZRAM_SIZE.*/export ZRAM_SIZE=$ZRAM_INIT_SIZE_PCT/g" /mnt/etc/sv/zramen/conf
+sed -i "s/.*ZRAM_MAX_SIZE.*/export ZRAM_MAX_SIZE=$ZRAM_MAX_SIZE_MB/g" /mnt/etc/sv/zramen/conf
+echo "add_drivers+=\" zram \"" >> /mnt/etc/dracut.conf.d/40-add_zram_driver.conf
 
-# echo "add_drivers+=\" lz4hc lz4hc_compress z3fold \"" >> /mnt/etc/dracut.conf.d/40-add_zswap_drivers.conf
 # sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ zswap.enabled=1 zswap.compressor=lz4hc&/" /mnt/etc/default/grub
 
 # Install repositories
