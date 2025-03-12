@@ -1,13 +1,25 @@
 #!/usr/bin/bash
 
+#
+# This script installs Void Linux on a Btrfs filesystem with subvolumes
+# and snapshots, a Gnome desktop environment and some basic packages.
+# It configures the system for zram swap space, and uses NetworkManager and elogind.
+# Tested on a desktop computer with a wired Ethernet connection, Intel CPU (i7-12900K) 
+# and Nvidia GPU (GTX 1650 SUPER), using the Void Linux live base image (2025-02-02, glibc, x86_64).
+#
+# PLEASE HANDLE WITH CARE AS ALL CONTENTS ON THE SELECTED DISK WILL BE LOST
+#
+
 # Global variables
 DISK=/dev/vda
-BTRFS_OPT=rw,noatime,discard=async,compress-force=zstd:1,space_cache=v2,commit=120
+BTRFS_OPT=rw,noatime,ssd,discard=async,compress-force=zstd:1,space_cache=v2,commit=120
 KEYMAP=us-acentos
 TIME_ZONE=Europe/Lisbon
 ARCH=x86_64
 REPO=https://repo-default.voidlinux.org
 USER_NAME=vasco
+HOST_NAME=morpheus
+SWAP_SIZE_MB=8192
 
 # Update Void
 xbps-install -Su
@@ -44,14 +56,14 @@ btrfs subvolume create /mnt/var/tmp
 btrfs subvolume create /mnt/var/log
 
 # Install base system and some basic packages
-XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager
+XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager zramen
 for dir in sys dev proc; do 
     mount --rbind /$dir /mnt/$dir; mount --make-rslave /mnt/$dir; 
 done
 cp -L /etc/resolv.conf /mnt/etc/
 
 # Set hostname, timezone and locales
-echo morpheus > /mnt/etc/hostname
+echo $HOST_NAME > /mnt/etc/hostname
 chroot /mnt ln -sf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime
 sed -i '/^#en_US.UTF-8/s/.//' /mnt/etc/default/libc-locales
 XBPS_ARCH=$ARCH xbps-reconfigure -r /mnt -f glibc-locales
@@ -92,9 +104,12 @@ UUID=$ROOT_UUID /var/log    btrfs   $BTRFS_OPT,subvol=@/var/log     0 0
 tmpfs           /tmp        tmpfs   defaults,noatime,mode=1777      0 0
 EOFSTAB
 
-# Enable zswap
-echo "add_drivers+=\" lz4hc lz4hc_compress z3fold \"" >> /etc/dracut.conf.d/40-add_zswap_drivers.conf
-sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ zswap.enabled=1 zswap.max_pool_percent=20 zswap.compressor=lz4hc zswap.zpool=z3fold&/" /mnt/etc/default/grub
+# Configure zram swap
+sed -i "/ZRAM_SIZE/s/./export ZRAM_SIZE=10/" /mnt/etc/sv/zramen/conf
+sed -i "/ZRAM_MAX_SIZE/s/./export ZRAM_MAX_SIZE=$SWAP_SIZE_MB/" /mnt/etc/sv/zramen/conf
+
+# echo "add_drivers+=\" lz4hc lz4hc_compress z3fold \"" >> /mnt/etc/dracut.conf.d/40-add_zswap_drivers.conf
+# sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ zswap.enabled=1 zswap.compressor=lz4hc&/" /mnt/etc/default/grub
 
 # Install repositories
 mkdir -p /mnt/etc/xbps.d
@@ -151,7 +166,7 @@ chroot /mnt bash /chroot.sh
 rm /mnt/chroot.sh
 
 # Install services
-for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd grub-btrfs; do
+for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd grub-btrfs zramen; do
   chroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 
