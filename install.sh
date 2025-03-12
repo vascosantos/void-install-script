@@ -9,8 +9,11 @@ ARCH=x86_64
 REPO=https://repo-default.voidlinux.org
 USER_NAME=vasco
 
+# Update Void
+xbps-install -Su
+
 # Install gptfdisk on the live system
-xbps-install -Suy gptfdisk
+xbps-install -Sy gptfdisk
 
 # Perform disk partitioning - ALL CONTENTS WILL BE LOST
 sgdisk -Z ${DISK}
@@ -41,7 +44,7 @@ btrfs subvolume create /mnt/var/tmp
 btrfs subvolume create /mnt/var/log
 
 # Install base system and some basic packages
-XBPS_ARCH=$ARCH xbps-install -Suy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager
+XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system btrfs-progs grub-x86_64-efi grub-btrfs grub-btrfs-runit NetworkManager
 for dir in sys dev proc; do 
     mount --rbind /$dir /mnt/$dir; mount --make-rslave /mnt/$dir; 
 done
@@ -95,14 +98,14 @@ sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ zswap.enabled=1 zswap.max_pool_perce
 
 # Install repositories
 mkdir -p /mnt/etc/xbps.d
-XBPS_ARCH=$ARCH xbps-install -Suy -r /mnt -R "$REPO/current" void-repo-nonfree void-repo-multilib void-repo-multilib-nonfree 
+XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" void-repo-nonfree void-repo-multilib void-repo-multilib-nonfree 
 
 # Set repository mirrors
 cp /mnt/usr/share/xbps.d/*-repository-*.conf /mnt/etc/xbps.d/
 sed -i "s|https://repo-default.voidlinux.org|$REPO|g" /mnt/etc/xbps.d/*-repository-*.conf
 
 # Install intel-ucode and nvidia drivers
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu intel-ucode mesa-dri nvidia
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy intel-ucode mesa-dri nvidia
 
 # Configure nvidia, dracut and efibootmgr
 cat <<EOMODPROBENVIDIACONF >> /mnt/etc/modprobe.d/nvidia.conf
@@ -119,7 +122,7 @@ mkdir -p /mnt/udev/rules.d
 chroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic flatpak snapper bash-completion vim 
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic flatpak snapper bash-completion vim 
 
 # Enable AppArmor
 sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ apparmor=1 security=apparmor&/" /mnt/etc/default/grub
@@ -128,13 +131,18 @@ sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ apparmor=1 security=apparmor&/" /mnt
 chroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
 # Generate chroot script
-cat << EOCHROOT > /mnt/chroot.sh
-#!/usr/bin/bash
-mount -t efivarfs efivarfs /sys/firmware/efi/efivars
-grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
-dracut --regenerate-all --force
-update-grub
-EOCHROOT
+mount -t efivarfs efivarfs /mnt/sys/firmware/efi/efivars
+chroot /mnt grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
+chroot /mnt dracut --regenerate-all --force
+chroot /mnt update-grub
+
+# cat << EOCHROOT > /mnt/chroot.sh
+# #!/usr/bin/bash
+# mount -t efivarfs efivarfs /sys/firmware/efi/efivars
+# grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
+# dracut --regenerate-all --force
+# update-grub
+# EOCHROOT
 
 # Run chroot script
 chroot /mnt bash /chroot.sh
