@@ -9,9 +9,10 @@ ARCH=x86_64
 REPO=https://repo-default.voidlinux.org
 USER_NAME=vasco
 
-# Install gptfdisk on the live system and perform disk partitioning
+# Install gptfdisk on the live system
 xbps-install -Suy gptfdisk
 
+# Perform disk partitioning - ALL CONTENTS WILL BE LOST
 sgdisk -Z ${DISK}
 sgdisk -a 2048 -o ${DISK}
 sgdisk -n 1:0:+512M ${DISK} # /dev/sda1
@@ -69,10 +70,11 @@ useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,b
 echo "-> Set password for $USER_NAME"
 passwd $USER_NAME -R /mnt
 
-# Set ownership and permissions, and enable sudo foe wheel group
+# Set ownership and permissions, and enable sudo for wheel group
 chown root:root /mnt
 chmod 755 /mnt
 echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/10-wheel
+echo "Defaults timestamp_timeout=60" >> /mnt/etc/sudoers.d/10-wheel    # require password every 60 minutes (default is 5)
 
 # Write fstab
 export BOOT_UUID=$(blkid -s UUID -o value ${DISK}1)
@@ -113,11 +115,11 @@ hostonly=yes
 EODRACUTCONF
 
 # Some nvidia fixes
-mkdir -pv /mnt/udev/rules.d
+mkdir -p /mnt/udev/rules.d
 chroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic flatpak snapper bash-completion vim
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Syu apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic flatpak snapper bash-completion vim 
 
 # Enable AppArmor
 sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ apparmor=1 security=apparmor&/" /mnt/etc/default/grub
@@ -155,8 +157,16 @@ btrfs subvolume delete /mnt/.snapshots
 mkdir /mnt/.snapshots
 # sed -i '/@snapshots/s/^#//' /mnt/etc/fstab
 
-# Customize .bashrc
+# Change vm.swappiness
+mkdir -p /mnt/etc/sysctl.conf.d
+echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
 
+# Customize .bashrc
+echo "alias la='ll -a'" >> /mnt/home/$USER_NAME/.bashrc
+echo "alias xin='sudo xbps-install'" >> /mnt/home/$USER_NAME/.bashrc
+echo "alias xq='xbps-query -Rs'" >> /mnt/home/$USER_NAME/.bashrc
+echo "alias xr='sudo xbps-remove'" >> /mnt/home/$USER_NAME/.bashrc
+echo "alias xro='sudo xbps-remove -o'" >> /mnt/home/$USER_NAME/.bashrc
 
 # Reconfigure all packages
 chroot /mnt xbps-reconfigure -fa
