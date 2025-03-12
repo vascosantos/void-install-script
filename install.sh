@@ -25,7 +25,7 @@ ZRAM_COMPRESSOR=zstd    # zram compression algorithm (see https://github.com/atw
 ZRAM_INIT_SIZE_PCT=2    # initial zram size as a percentage of total RAM
 ZRAM_MAX_SIZE_MB=16384  # maximum zram size in MB
 
-# detect if BOOT_DISK contains "nvme" using bash
+# Set boot and pool devices
 if [[ $BOOT_DISK == *"nvme"* ]]; then
   BOOT_DEVICE="${BOOT_DISK}p${BOOT_PARTITION}"
 else
@@ -59,7 +59,7 @@ zpool create -f -o ashift=12 \
     -O xattr=sa \
     -O relatime=on \
     -o autotrim=on \
-    -o compatibility=openzfs-2.3.1-linux \
+    -o compatibility=openzfs-2.3-linux \
     -m none zroot "$POOL_DEVICE"
 
 # Create initial file systems
