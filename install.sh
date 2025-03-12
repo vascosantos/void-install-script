@@ -82,7 +82,7 @@ xbps-install -Suy   # might need to run twice to ensure all packages are up-to-d
 xbps-install -Suy 
 
 # Install base system and some basic packages
-XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system zfs zfsbootmenu systemd-boot-efistub refind zramen
+XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system
 for dir in sys dev proc; do 
     mount --rbind /$dir /mnt/$dir; mount --make-rslave /mnt/$dir; 
 done
@@ -120,6 +120,7 @@ echo "%wheel ALL= (ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot, /sbin/halt" >> /
 echo "Defaults timestamp_timeout=60" >> /mnt/etc/sudoers.d/10-wheel.conf    # require password only every 60 minutes (default is 5)
 
 # Configure zram swap
+XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt zramen
 sed -i "s/.*ZRAM_COMP_ALGORITHM.*/export ZRAM_COMP_ALGORITHM=$ZRAM_COMPRESSOR/g" /mnt/etc/sv/zramen/conf
 sed -i "s/.*ZRAM_SIZE.*/export ZRAM_SIZE=$ZRAM_INIT_SIZE_PCT/g" /mnt/etc/sv/zramen/conf
 sed -i "s/.*ZRAM_MAX_SIZE.*/export ZRAM_MAX_SIZE=$ZRAM_MAX_SIZE_MB/g" /mnt/etc/sv/zramen/conf
@@ -154,12 +155,13 @@ mkdir -p /mnt/udev/rules.d
 chroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic flatpak snapper bash-completion vim 
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic snapper bash-completion vim 
 
 # Enable AppArmor
 # sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ apparmor=1 security=apparmor&/" /mnt/etc/default/grub
 
 # Configure flatpak
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy flatpak
 chroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
 # Install Grub and generate initramfs 
@@ -170,9 +172,11 @@ chroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/re
 
 
 # Install and configure ZFSBootMenu and rEFInd
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy zfs zfsbootmenu systemd-boot-efistub refind zfs-auto-snapshot
+
 chroot /mnt zfs set org.zfsbootmenu:commandline="quiet" zroot/ROOT
 mkfs.vfat -F32 "$BOOT_DEVICE"
-cat << EOF >> /etc/fstab
+cat << EOF >> /mnt/etc/fstab
 $( blkid | grep "$BOOT_DEVICE" | cut -d ' ' -f 2 ) /boot/efi vfat defaults 0 0
 EOF
 
