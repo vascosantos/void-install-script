@@ -87,9 +87,8 @@ zfs mount zroot/home
 # Update device symlinks
 udevadm trigger
 
-# Update Void
-xbps-install -Suy   # might need to run twice to ensure all packages are up-to-date
-xbps-install -Suy 
+# Update XBPS
+XBPS_ARCH=$ARCH xbps-install -Sy xbps
 
 # Install base system and some basic packages
 XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system
