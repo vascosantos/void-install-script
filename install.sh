@@ -22,8 +22,8 @@
 # Global variables
 BOOT_DISK=/dev/vda
 POOL_DISK=/dev/vda
-BOOT_PARTITION=1
-POOL_PARTITION=2
+BOOT_PART=1
+POOL_PART=2
 KEYMAP=us-acentos
 TIME_ZONE=Europe/Lisbon
 ARCH=x86_64
@@ -36,14 +36,14 @@ ZRAM_MAX_SIZE_MB=16384  # maximum zram size in MB
 
 # Set boot and pool devices
 if [[ $BOOT_DISK == *"nvme"* ]]; then
-  BOOT_DEVICE="${BOOT_DISK}p${BOOT_PARTITION}"
+  BOOT_DEVICE="${BOOT_DISK}p${BOOT_PART}"
 else
-  BOOT_DEVICE="${BOOT_DISK}${BOOT_PARTITION}"
+  BOOT_DEVICE="${BOOT_DISK}${BOOT_PART}"
 fi
 if [[ $POOL_DISK == *"nvme"* ]]; then
-  POOL_DEVICE="${POOL_DISK}p${POOL_PARTITION}"
+  POOL_DEVICE="${POOL_DISK}p${POOL_PART}"
 else
-  POOL_DEVICE="${POOL_DISK}${POOL_PARTITION}"
+  POOL_DEVICE="${POOL_DISK}${POOL_PART}"
 fi
 
 # Generate /etc/hostid
@@ -58,8 +58,8 @@ sgdisk --zap-all "$POOL_DISK"
 sgdisk --zap-all "$BOOT_DISK"
 
 # Create partitions
-sgdisk -n "${BOOT_PARTITION}:1m:+512m" -t "${BOOT_PARTITION}:ef00" "$BOOT_DISK"
-sgdisk -n "${POOL_PARTITION}:0:-10m" -t "${POOL_PARTITION}:bf00" "$POOL_DISK"
+sgdisk -n "${BOOT_PART}:1m:+512m" -t "${BOOT_PART}:ef00" "$BOOT_DISK"
+sgdisk -n "${POOL_PART}:0:-10m" -t "${POOL_PART}:bf00" "$POOL_DISK"
 mkfs.vfat -F32 "$BOOT_DEVICE"
 
 # Create the zpool
@@ -87,25 +87,18 @@ zfs mount zroot/home
 # Update device symlinks
 udevadm trigger
 
-# Update XBPS
-XBPS_ARCH=$ARCH xbps-install -Sy xbps
-
-# Install base system and some basic packages
+# Install base system
 XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" base-system
-for dir in sys dev proc; do 
-    mount --rbind /$dir /mnt/$dir; mount --make-rslave /mnt/$dir; 
-done
-cp -L /etc/resolv.conf /mnt/etc/
-cp -L /etc/hostid /mnt/etc/
 
-# Set hostname, timezone and locales
+# Set hostname, timezone, locales and keymap
 echo $HOST_NAME > /mnt/etc/hostname
 xchroot /mnt ln -sf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime
 sed -i '/^#en_US.UTF-8/s/.//' /mnt/etc/default/libc-locales
-XBPS_ARCH=$ARCH xbps-reconfigure -r /mnt -f glibc-locales
-
-# Set keymap
 sed -i "/#KEYMAP=/s/.*/KEYMAP=\"$KEYMAP\"/" /mnt/etc/rc.conf
+
+# Copy network configuration and hostid
+cp /etc/resolv.conf /mnt/etc/
+cp /etc/hostid /mnt/etc/
 
 # Set root password
 echo "-> Set password for root"
@@ -124,9 +117,9 @@ passwd $USER_NAME -R /mnt
 # Set ownership and permissions, and enable sudo for wheel group
 chown root:root /mnt
 chmod 755 /mnt
-echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/10-wheel.conf
-echo "%wheel ALL= (ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot, /sbin/halt" >> /mnt/etc/sudoers.d/10-wheel.conf # allow shutdown, reboot and halt without password
-echo "Defaults timestamp_timeout=60" >> /mnt/etc/sudoers.d/10-wheel.conf    # require password only every 60 minutes (default is 5)
+echo "%wheel ALL=(ALL) ALL" > /mnt/etc/sudoers.d/wheel
+echo "%wheel ALL= (ALL) NOPASSWD: /sbin/shutdown, /sbin/reboot, /sbin/halt" >> /mnt/etc/sudoers.d/wheel # allow shutdown, reboot and halt without password
+echo "Defaults timestamp_timeout=60" >> /mnt/etc/sudoers.d/wheel    # require password only every 60 minutes (default is 5)
 
 # Configure zram swap
 XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt zramen
@@ -164,11 +157,17 @@ mkdir -p /mnt/udev/rules.d
 xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic snapper bash-completion vim 
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic bash-completion vim cronie git xtools
 
 # Configure flatpak
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy flatpak
 xchroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+
+# Set up XBPS-SRC
+git clone https://github.com/void-linux/void-packages.git /mnt/home/$USER_NAME/void-packages
+xchroot /mnt chown -R $USER_NAME:$USER_NAME /mnt/home/$USER_NAME/void-packages
+xchroot /mnt su - $USER_NAME -c "cd void-packages && ./xbps-src binary-bootstrap"
+echo XBPS_ALLOW_RESTRICTED=yes >> /mnt/etc/conf
 
 # Install and configure ZFSBootMenu
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy zfs zfsbootmenu efibootmgr systemd-boot-efistub zfs-auto-snapshot
@@ -192,23 +191,29 @@ EFI:
   Versions: false
   Enabled: true
 Kernel:
-  CommandLine: quiet loglevel=0 apparmor=1 security=apparmor
+  CommandLine: quiet loglevel=0
 EOZFSBMCFG
 
 xchroot /mnt generate-zbm  # generate ZFSBootMenu image
 
-xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PARTITION" \
+# Enforce AppArmor
+sed -i "/APPARMOR=/s/.*/APPARMOR=enforce/" /mnt/etc/default/apparmor
+sed -i "/#write-cache/s/^#//" /mnt/etc/apparmor/parser.conf
+sed -i "/#show_notifications/s/^#//" /mnt/etc/apparmor/notify.conf
+sed -i "/OPTIONS=/s/\"$/ apparmor=1 security=apparmor&/" /mnt/etc/default/efibootmgr-kernel-hook
+
+xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PART" \
   -L "ZFSBootMenu (Backup)" \
   -l '\EFI\ZBM\VMLINUZ-BACKUP.EFI'
 
-xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PARTITION" \
+xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PART" \
   -L "ZFSBootMenu" \
   -l '\EFI\ZBM\VMLINUZ.EFI'
 
 xchroot /mnt dracut --regenerate-all --force
 
 # Install services
-for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd zramen; do
+for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd zramen crond; do
   xchroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 
