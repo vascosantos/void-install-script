@@ -195,7 +195,7 @@ EFI:
   Versions: false
   Enabled: true
 Kernel:
-  CommandLine: quiet loglevel=4
+  CommandLine: quiet loglevel=0
 EOZFSBMCFG
 
 xchroot /mnt generate-zbm  # generate ZFSBootMenu image
