@@ -147,7 +147,7 @@ cat <<EODRACUTCONF >> /mnt/etc/dracut.conf.d/options.conf
 hostonly="yes"
 nofsck="yes"
 add_dracutmodules+=" zfs "
-omit_dracutmodules+=" btrfs "
+omit_dracutmodules+=" btrfs resume "
 EODRACUTCONF
 
 # Some nvidia fixes
@@ -181,7 +181,7 @@ $( blkid | grep "$BOOT_DEVICE" | cut -d ' ' -f 2 ) /boot/efi vfat defaults 0 0
 EOF
 
 mkdir -p /mnt/boot/efi
-mount /mnt/boot/efi
+chroot /mnt mount /boot/efi
 
 cat << EOZFSBMCFG > /mnt/etc/zfsbootmenu/config.yaml
 Global:
@@ -199,7 +199,7 @@ EOZFSBMCFG
 
 chroot /mnt generate-zbm  # generate ZFSBootMenu image
 
-refind-install
+chroot /mnt refind-install
 rm /mnt/boot/refind_linux.conf
 
 cat << EOF > /mnt/boot/efi/EFI/ZBM/refind_linux.conf
