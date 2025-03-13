@@ -4,7 +4,8 @@ This script performs automated Void Linux on a ZFS filesystem.
 
 Features:
 - UEFI boot with `ZFSBootMenu`
-- ZFS root filesystem (WIPES ALL DATA WITHOUT PROMPTING)
+- ZFS root filesystem creation (WIPES ALL DATA WITHOUT PROMPTING)
+- Automated snapshots using `zfs-auto-snapshot`
 - `zram` swap space
 - `NetworkManager` and `elogind`
 - Proprietary NVIDIA drivers
