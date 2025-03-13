@@ -157,7 +157,11 @@ mkdir -p /mnt/udev/rules.d
 xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic bash-completion vim cronie git xtools
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic bash-completion vim cronie git xtools gpm
+
+# Configure gpm (console mouse)
+mkdir -p /mnt/etc/conf.d
+echo "GPM_ARGS=\"-m /dev/input/mice -t imps2\"" > /mnt/etc/conf.d/gpm
 
 # Configure flatpak
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy flatpak
@@ -212,7 +216,7 @@ xchroot /mnt efibootmgr --create --disk "$BOOT_DISK" --part "$BOOT_PART" \
   --loader '\EFI\ZBM\VMLINUZ.EFI'
 
 # Install services
-for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd zramen crond; do
+for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd zramen crond gpm; do
   xchroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 
