@@ -1,8 +1,18 @@
 #!/usr/bin/bash
 
 #
-# This script installs Void Linux on a ZFS filesystem, a Gnome desktop environment and some basic packages.
-# It configures the system for zram swap space, and uses NetworkManager and elogind.
+# This script installs Void Linux on a ZFS filesystem.
+#
+# It features:
+#   - UEFI boot with ZFSBootMenu
+#   - ZFS root filesystem
+#   - Zram swap space
+#   - NetworkManager and elogind
+#   - Proprietary Nvidia drivers
+#   - Gnome desktop environment
+#   - Flatpak support
+#   - AppArmor
+#
 # Tested on a desktop PC using a wired Ethernet connection, Intel CPU (i7-12900K) and Nvidia GPU (GTX 1650 SUPER). 
 # This is based on the hrmpf rescue system image release 20250228 (https://github.com/leahneukirchen/hrmpf).
 #
@@ -14,7 +24,6 @@ BOOT_DISK=/dev/vda
 POOL_DISK=/dev/vda
 BOOT_PARTITION=1
 POOL_PARTITION=2
-# BTRFS_OPT=rw,noatime,ssd,discard=async,compress-force=zstd:1,space_cache=v2,commit=120
 KEYMAP=us-acentos
 TIME_ZONE=Europe/Lisbon
 ARCH=x86_64
@@ -138,7 +147,7 @@ sed -i "s|https://repo-default.voidlinux.org|$REPO|g" /mnt/etc/xbps.d/*-reposito
 # Install intel-ucode and nvidia drivers
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy intel-ucode mesa-dri nvidia
 
-# Configure nvidia, dracut and rEFInd
+# Configure nvidia and dracut
 cat <<EOMODPROBENVIDIACONF >> /mnt/etc/modprobe.d/nvidia.conf
 # blacklist nouveau
 options nvidia-drm modeset=1
@@ -158,22 +167,12 @@ xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 # Install extra packages
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic snapper bash-completion vim 
 
-# Enable AppArmor
-# sed -i "/GRUB_CMDLINE_LINUX_DEFAULT=/s/\"$/ apparmor=1 security=apparmor&/" /mnt/etc/default/grub
-
 # Configure flatpak
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy flatpak
 xchroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
-# Install Grub and generate initramfs 
-# mount -t efivarfs efivarfs /mnt/sys/firmware/efi/efivars
-# xchroot /mnt grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
-# xchroot /mnt dracut --regenerate-all --force
-# xchroot /mnt update-grub
-
-
-# Install and configure ZFSBootMenu and rEFInd
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy zfs zfsbootmenu systemd-boot-efistub refind zfs-auto-snapshot
+# Install and configure ZFSBootMenu
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy zfs zfsbootmenu efibootmgr systemd-boot-efistub zfs-auto-snapshot
 
 xchroot /mnt zfs set org.zfsbootmenu:commandline="quiet" zroot/ROOT
 cat << EOF >> /mnt/etc/fstab
@@ -199,13 +198,13 @@ EOZFSBMCFG
 
 xchroot /mnt generate-zbm  # generate ZFSBootMenu image
 
-xchroot /mnt refind-install
-rm /mnt/boot/refind_linux.conf
+xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PARTITION" \
+  -L "ZFSBootMenu (Backup)" \
+  -l '\EFI\ZBM\VMLINUZ-BACKUP.EFI'
 
-cat << EOF > /mnt/boot/efi/EFI/ZBM/refind_linux.conf
-"Boot default"  "quiet loglevel=0 zbm.skip"
-"Boot to menu"  "quiet loglevel=0 zbm.show"
-EOF
+xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PARTITION" \
+  -L "ZFSBootMenu" \
+  -l '\EFI\ZBM\VMLINUZ.EFI'
 
 xchroot /mnt dracut --regenerate-all --force
 
@@ -216,12 +215,6 @@ done
 
 # Don't start GDM by default, just in case the video drivers are not working
 touch /mnt/etc/sv/gdm/down
-
-# # Set up snapper
-# rm -r /mnt/.snapshots
-# xchroot /mnt snapper -c root create-config /
-# btrfs subvolume delete /mnt/.snapshots
-# mkdir /mnt/.snapshots
 
 # Change vm.swappiness
 mkdir -p /mnt/etc/sysctl.conf.d
