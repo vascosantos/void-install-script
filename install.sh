@@ -1,24 +1,5 @@
 #!/usr/bin/bash
 
-#
-# This script installs Void Linux on a ZFS filesystem.
-#
-# It features:
-#   - UEFI boot with ZFSBootMenu
-#   - ZFS root filesystem
-#   - Zram swap space
-#   - NetworkManager and elogind
-#   - Proprietary Nvidia drivers
-#   - Gnome desktop environment
-#   - Flatpak support
-#   - AppArmor
-#
-# Tested on a desktop PC using a wired Ethernet connection, Intel CPU (i7-12900K) and Nvidia GPU (GTX 1650 SUPER). 
-# This is based on the hrmpf rescue system image release 20250228 (https://github.com/leahneukirchen/hrmpf).
-#
-# PLEASE HANDLE WITH CARE AS ALL CONTENTS ON THE SELECTED DISK WILL BE LOST
-#
-
 # Global variables
 BOOT_DISK=/dev/vda
 POOL_DISK=/dev/vda
@@ -102,7 +83,7 @@ cp /etc/hostid /mnt/etc/
 
 # Set root password
 echo "-> Set password for root"
-passwd root -R /mnt
+while true; do passwd root -R /mnt && break; done
 
 # Create user and groups, and set password
 groupadd -R /mnt socklog
@@ -112,7 +93,7 @@ groupadd -R /mnt bluetooth
 groupadd -R /mnt lpadmin
 useradd -R /mnt -mG wheel,input,kvm,socklog,libvirt,docker,audio,video,network,bluetooth,lpadmin $USER_NAME
 echo "-> Set password for $USER_NAME"
-passwd $USER_NAME -R /mnt
+while true; do passwd $USER_NAME -R /mnt && break; done
 
 # Set ownership and permissions, and enable sudo for wheel group
 chown root:root /mnt
