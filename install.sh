@@ -200,7 +200,7 @@ xchroot /mnt generate-zbm  # generate ZFSBootMenu image
 sed -i "/APPARMOR=/s/.*/APPARMOR=enforce/" /mnt/etc/default/apparmor
 sed -i "/#write-cache/s/^#//" /mnt/etc/apparmor/parser.conf
 sed -i "/#show_notifications/s/^#//" /mnt/etc/apparmor/notify.conf
-xchroot zfs set org.zfsbootmenu:commandline="apparmor=1 security=apparmor" zroot/ROOT/${ID}
+xchroot /mnt zfs set org.zfsbootmenu:commandline="apparmor=1 security=apparmor" zroot/ROOT/${ID}
 
 # Create EFI boot entries
 xchroot /mnt efibootmgr --create --disk "$BOOT_DISK" --part "$BOOT_PART" \
