@@ -126,7 +126,7 @@ XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt zramen
 sed -i "s/.*ZRAM_COMP_ALGORITHM.*/export ZRAM_COMP_ALGORITHM=$ZRAM_COMPRESSOR/g" /mnt/etc/sv/zramen/conf
 sed -i "s/.*ZRAM_SIZE.*/export ZRAM_SIZE=$ZRAM_INIT_SIZE_PCT/g" /mnt/etc/sv/zramen/conf
 sed -i "s/.*ZRAM_MAX_SIZE.*/export ZRAM_MAX_SIZE=$ZRAM_MAX_SIZE_MB/g" /mnt/etc/sv/zramen/conf
-echo "add_drivers+=\" zram \"" >> /mnt/etc/dracut.conf.d/10-add_zram_driver.conf
+echo "add_drivers+=\" zram \"" >> /mnt/etc/dracut.conf.d/drivers.conf
 
 # Install repositories
 mkdir -p /mnt/etc/xbps.d
@@ -191,7 +191,7 @@ EFI:
   Versions: false
   Enabled: true
 Kernel:
-  CommandLine: quiet loglevel=0
+  CommandLine: quiet loglevel=4
 EOZFSBMCFG
 
 xchroot /mnt generate-zbm  # generate ZFSBootMenu image
@@ -200,17 +200,16 @@ xchroot /mnt generate-zbm  # generate ZFSBootMenu image
 sed -i "/APPARMOR=/s/.*/APPARMOR=enforce/" /mnt/etc/default/apparmor
 sed -i "/#write-cache/s/^#//" /mnt/etc/apparmor/parser.conf
 sed -i "/#show_notifications/s/^#//" /mnt/etc/apparmor/notify.conf
-sed -i "/OPTIONS=/s/\"$/ apparmor=1 security=apparmor&/" /mnt/etc/default/efibootmgr-kernel-hook
+xchroot zfs set org.zfsbootmenu:commandline="apparmor=1 security=apparmor" zroot/ROOT/${ID}
 
-xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PART" \
-  -L "ZFSBootMenu (Backup)" \
-  -l '\EFI\ZBM\VMLINUZ-BACKUP.EFI'
+# Create EFI boot entries
+xchroot /mnt efibootmgr --create --disk "$BOOT_DISK" --part "$BOOT_PART" \
+  --label "ZFSBootMenu (Backup)" \
+  --loader '\EFI\ZBM\VMLINUZ-BACKUP.EFI'
 
-xchroot /mnt efibootmgr -c -d "$BOOT_DISK" -p "$BOOT_PART" \
-  -L "ZFSBootMenu" \
-  -l '\EFI\ZBM\VMLINUZ.EFI'
-
-xchroot /mnt dracut --regenerate-all --force
+xchroot /mnt efibootmgr --create --disk "$BOOT_DISK" --part "$BOOT_PART" \
+  --label "ZFSBootMenu" \
+  --loader '\EFI\ZBM\VMLINUZ.EFI'
 
 # Install services
 for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd zramen crond; do
