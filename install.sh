@@ -51,6 +51,7 @@ sgdisk --zap-all "$BOOT_DISK"
 # Create partitions
 sgdisk -n "${BOOT_PARTITION}:1m:+512m" -t "${BOOT_PARTITION}:ef00" "$BOOT_DISK"
 sgdisk -n "${POOL_PARTITION}:0:-10m" -t "${POOL_PARTITION}:bf00" "$POOL_DISK"
+mkfs.vfat -F32 "$BOOT_DEVICE"
 
 # Create the zpool
 zpool create -f -o ashift=12 \
@@ -91,7 +92,7 @@ cp -L /etc/hostid /mnt/etc/
 
 # Set hostname, timezone and locales
 echo $HOST_NAME > /mnt/etc/hostname
-chroot /mnt ln -sf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime
+xchroot /mnt ln -sf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime
 sed -i '/^#en_US.UTF-8/s/.//' /mnt/etc/default/libc-locales
 XBPS_ARCH=$ARCH xbps-reconfigure -r /mnt -f glibc-locales
 
@@ -152,7 +153,7 @@ EODRACUTCONF
 
 # Some nvidia fixes
 mkdir -p /mnt/udev/rules.d
-chroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
+xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic snapper bash-completion vim 
@@ -162,26 +163,25 @@ XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire 
 
 # Configure flatpak
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy flatpak
-chroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+xchroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
 
 # Install Grub and generate initramfs 
 # mount -t efivarfs efivarfs /mnt/sys/firmware/efi/efivars
-# chroot /mnt grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
-# chroot /mnt dracut --regenerate-all --force
-# chroot /mnt update-grub
+# xchroot /mnt grub-install --target=x86_64-efi --boot-directory=/boot --efi-directory=/boot/efi --bootloader-id="Void Linux" --recheck
+# xchroot /mnt dracut --regenerate-all --force
+# xchroot /mnt update-grub
 
 
 # Install and configure ZFSBootMenu and rEFInd
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy zfs zfsbootmenu systemd-boot-efistub refind zfs-auto-snapshot
 
-chroot /mnt zfs set org.zfsbootmenu:commandline="quiet" zroot/ROOT
-mkfs.vfat -F32 "$BOOT_DEVICE"
+xchroot /mnt zfs set org.zfsbootmenu:commandline="quiet" zroot/ROOT
 cat << EOF >> /mnt/etc/fstab
 $( blkid | grep "$BOOT_DEVICE" | cut -d ' ' -f 2 ) /boot/efi vfat defaults 0 0
 EOF
 
 mkdir -p /mnt/boot/efi
-chroot /mnt mount /boot/efi
+mount -t vfat $BOOT_DEVICE /mnt/boot/efi
 
 cat << EOZFSBMCFG > /mnt/etc/zfsbootmenu/config.yaml
 Global:
@@ -197,9 +197,9 @@ Kernel:
   CommandLine: quiet loglevel=0 apparmor=1 security=apparmor
 EOZFSBMCFG
 
-chroot /mnt generate-zbm  # generate ZFSBootMenu image
+xchroot /mnt generate-zbm  # generate ZFSBootMenu image
 
-chroot /mnt refind-install
+xchroot /mnt refind-install
 rm /mnt/boot/refind_linux.conf
 
 cat << EOF > /mnt/boot/efi/EFI/ZBM/refind_linux.conf
@@ -207,11 +207,11 @@ cat << EOF > /mnt/boot/efi/EFI/ZBM/refind_linux.conf
 "Boot to menu"  "quiet loglevel=0 zbm.show"
 EOF
 
-chroot /mnt dracut --regenerate-all --force
+xchroot /mnt dracut --regenerate-all --force
 
 # Install services
 for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd zramen; do
-  chroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
+  xchroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 
 # Don't start GDM by default, just in case the video drivers are not working
@@ -219,7 +219,7 @@ touch /mnt/etc/sv/gdm/down
 
 # # Set up snapper
 # rm -r /mnt/.snapshots
-# chroot /mnt snapper -c root create-config /
+# xchroot /mnt snapper -c root create-config /
 # btrfs subvolume delete /mnt/.snapshots
 # mkdir /mnt/.snapshots
 
@@ -235,7 +235,7 @@ echo "alias xr='sudo xbps-remove'" >> /mnt/home/$USER_NAME/.bashrc
 echo "alias xro='sudo xbps-remove -o'" >> /mnt/home/$USER_NAME/.bashrc
 
 # Reconfigure all packages
-chroot /mnt xbps-reconfigure -fa
+xchroot /mnt xbps-reconfigure -fa
 
 # Unmount all filesystems
 umount -n -R /mnt
