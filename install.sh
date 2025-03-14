@@ -77,7 +77,7 @@ xchroot /mnt ln -sf /usr/share/zoneinfo/$TIME_ZONE /etc/localtime
 sed -i '/^#en_US.UTF-8/s/.//' /mnt/etc/default/libc-locales
 sed -i "/#KEYMAP=/s/.*/KEYMAP=\"$KEYMAP\"/" /mnt/etc/rc.conf
 
-# Copy network configuration and hostid
+# Copy DNS configuration and hostid
 cp /etc/resolv.conf /mnt/etc/
 cp /etc/hostid /mnt/etc/
 
@@ -139,6 +139,12 @@ xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic bash-completion vim cronie git xtools gpm socklog-void runit-iptables polkit
+
+# Configure pipewire
+mkdir -p /mnt/etc/pipewire/pipewire.conf.d
+xchroot /mnt ln -s /usr/share/examples/wireplumber/10-wireplumber.conf /etc/pipewire/pipewire.conf.d/
+xchroot /mnt ln -s /usr/share/examples/pipewire/20-pipewire-pulse.conf /etc/pipewire/pipewire.conf.d/
+xchroot /mnt ln -s /usr/share/applications/pipewire.desktop /etc/xdg/autostart/
 
 # Configure gpm (console mouse)
 mkdir -p /mnt/etc/conf.d
