@@ -117,8 +117,8 @@ XBPS_ARCH=$ARCH xbps-install -Sy -r /mnt -R "$REPO/current" void-repo-nonfree vo
 cp /mnt/usr/share/xbps.d/*-repository-*.conf /mnt/etc/xbps.d/
 sed -i "s|https://repo-default.voidlinux.org|$REPO|g" /mnt/etc/xbps.d/*-repository-*.conf
 
-# Install intel-ucode and nvidia drivers
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy intel-ucode mesa-dri nvidia
+# Install intel and nvidia drivers
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy intel-ucode linux-firmware-intel vulkan-loader mesa-vulkan-intel intel-video-accel mesa-dri nvidia
 
 # Configure nvidia and dracut
 cat <<EOMODPROBENVIDIACONF >> /mnt/etc/modprobe.d/nvidia.conf
@@ -138,7 +138,15 @@ mkdir -p /mnt/udev/rules.d
 xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
-XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy NetworkManager apparmor bluez pipewire gnome gnome-software xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome cups foomatic-db foomatic-db-nonfree avahi nss-mdns dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts autorestic bash-completion vim cronie git xtools gpm socklog-void runit-iptables polkit
+XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy \
+  NetworkManager apparmor cronie xtools gpm socklog-void runit-iptables polkit \
+  bluez pipewire wireplumber dbus avahi nss-mdns \
+  gnome gnome-software libreoffice virt-manager \
+  xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome \
+  cups foomatic-db foomatic-db-nonfree \
+  dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts \
+  restic autorestic \
+  bash-completion vim git
 
 # Configure pipewire
 mkdir -p /mnt/etc/pipewire/pipewire.conf.d
