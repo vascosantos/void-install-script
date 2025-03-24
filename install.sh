@@ -12,8 +12,8 @@ REPO=https://repo-default.voidlinux.org
 USER_NAME=vasco
 HOST_NAME=morpheus
 ZRAM_COMPRESSOR=zstd    # zram compression algorithm (see https://github.com/atweiden/zramen/blob/master/zramen or check `man zramctl`)
-ZRAM_INIT_SIZE_PCT=2    # initial zram size as a percentage of total RAM
-ZRAM_MAX_SIZE_MB=16384  # maximum zram size in MB
+ZRAM_INIT_SIZE_PCT=25   # initial zram size as a percentage of total RAM
+ZRAM_MAX_SIZE_MB=8192   # maximum zram size in MB
 
 # Set boot and pool devices
 if [[ $BOOT_DISK == *"nvme"* ]]; then
@@ -145,7 +145,7 @@ XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy \
   xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome \
   cups foomatic-db foomatic-db-nonfree \
   dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts \
-  restic autorestic \
+  restic autorestic nix \
   bash-completion vim git
 
 # Configure pipewire
@@ -211,7 +211,7 @@ xchroot /mnt efibootmgr --create --disk "$BOOT_DISK" --part "$BOOT_PART" \
   --loader '\EFI\ZBM\VMLINUZ.EFI'
 
 # Install services
-for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd saned zramen crond gpm power-profiles-daemon iptables ip6tables; do
+for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon bluetoothd gdm cupsd saned zramen crond gpm power-profiles-daemon iptables ip6tables nix-daemon; do
   xchroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 
@@ -223,6 +223,7 @@ mkdir -p /mnt/etc/sysctl.conf.d
 echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
 
 # Customize .bashrc
+echo "alias ll='ls -lsh'" >> /mnt/home/$USER_NAME/.bashrc
 echo "alias la='ll -a'" >> /mnt/home/$USER_NAME/.bashrc
 echo "alias xin='sudo xbps-install'" >> /mnt/home/$USER_NAME/.bashrc
 echo "alias xq='xbps-query -Rs'" >> /mnt/home/$USER_NAME/.bashrc
