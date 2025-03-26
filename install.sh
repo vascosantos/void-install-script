@@ -139,7 +139,7 @@ xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 
 # Install extra packages
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy \
-  NetworkManager apparmor cronie xtools gpm socklog-void runit-iptables polkit \
+  NetworkManager apparmor cronie xtools psmisc gpm socklog-void runit-iptables polkit \
   bluez pipewire wireplumber dbus avahi nss-mdns \
   gnome gnome-software libreoffice virt-manager \
   xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome \
