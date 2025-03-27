@@ -222,13 +222,27 @@ touch /mnt/etc/sv/gdm/down
 mkdir -p /mnt/etc/sysctl.conf.d
 echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
 
-# Customize .bashrc
-echo "alias ll='ls -lsh'" >> /mnt/home/$USER_NAME/.bashrc
-echo "alias la='ll -a'" >> /mnt/home/$USER_NAME/.bashrc
-echo "alias xin='sudo xbps-install'" >> /mnt/home/$USER_NAME/.bashrc
-echo "alias xq='xbps-query -Rs'" >> /mnt/home/$USER_NAME/.bashrc
-echo "alias xr='sudo xbps-remove'" >> /mnt/home/$USER_NAME/.bashrc
-echo "alias xro='sudo xbps-remove -o'" >> /mnt/home/$USER_NAME/.bashrc
+# Setup .bash_profile
+cat << EOBSHPROFILE >> /mnt/$USER_NAME/.bash_profile
+
+# aliases
+alias ll='ls -lsh'
+alias la='ll -a'
+alias xin='sudo xbps-install'
+alias xq='xbps-query -Rs'
+alias xr='sudo xbps-remove'
+alias xro='sudo xbps-remove -o'
+
+# show nix applications on the desktop environment
+if [ -n ${XDG_SESSION_ID} ];then
+    if [ -d ~/.nix-profile ];then
+        for x in $(find ~/.nix-profile/share/applications/*.desktop);do
+            MY_XDG_DIRS=$(dirname $(dirname $(readlink -f $x))):${MY_XDG_DIRS}
+        done
+        export XDG_DATA_DIRS=${MY_XDG_DIRS}:${XDG_DATA_DIRS}
+    fi
+fi
+EOBSHPROFILE
 
 # Reconfigure all packages
 xchroot /mnt xbps-reconfigure -fa
