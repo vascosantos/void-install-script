@@ -168,6 +168,10 @@ xchroot /mnt chown -R $USER_NAME:$USER_NAME /mnt/home/$USER_NAME/void-packages
 xchroot /mnt su - $USER_NAME -c "cd void-packages && ./xbps-src binary-bootstrap"
 echo XBPS_ALLOW_RESTRICTED=yes >> /mnt/etc/conf
 
+# Set up NIX
+mkdir -p /mnt/home/$USER_NAME/.config/nixpkgs
+echo "{ allowUnfree = true; }" > /mnt/home/$USER_NAME/.config/nixpkgs/config.nix
+
 # Install and configure ZFSBootMenu
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy zfs zfsbootmenu efibootmgr systemd-boot-efistub zfs-auto-snapshot
 
@@ -225,7 +229,7 @@ echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
 # Setup .bash_profile
 cat << EOBSHPROFILE >> /mnt/$USER_NAME/.bash_profile
 
-# aliases
+# my shell aliases
 alias ll='ls -lsh'
 alias la='ll -a'
 alias xin='sudo xbps-install'
