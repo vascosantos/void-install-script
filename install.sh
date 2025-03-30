@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-exec 2>&1 >(tee -ia install.log)
+exec > >(tee -ia install.log)
 
 # Global variables
 BOOT_DISK=/dev/vda
