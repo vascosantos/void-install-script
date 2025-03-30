@@ -216,9 +216,6 @@ for service in elogind NetworkManager socklog-unix nanoklogd dbus avahi-daemon b
   xchroot /mnt ln -sfv /etc/sv/$service /etc/runit/runsvdir/default
 done
 
-# Don't start GDM by default, just in case something is wrong
-touch /mnt/etc/sv/gdm/down
-
 # Change vm.swappiness
 mkdir -p /mnt/etc/sysctl.conf.d
 echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
@@ -226,26 +223,25 @@ echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
 # Set up NIX
 mkdir -p /mnt/home/$USER_NAME/.config/nixpkgs
 echo "{ allowUnfree = true; }" > /mnt/home/$USER_NAME/.config/nixpkgs/config.nix
-xchroot /mnt sv up nix-daemon && nix-channel --add http://nixos.org/channels/nixpkgs-unstable && nix-channel --update
+xchroot /mnt sv up nix-daemon && su - $USER_NAME -c "nix-channel --add http://nixos.org/channels/nixpkgs-unstable && nix-channel --update"
 
 # Setup .bash_profile
 cat << EOBSHPROFILE >> /mnt/$USER_NAME/.bash_profile
 
 # my shell aliases
-alias ll='ls -lsh'
-alias la='ll -a'
+alias ll='ls -lash'
 alias xin='sudo xbps-install'
 alias xq='xbps-query -Rs'
 alias xr='sudo xbps-remove'
 alias xro='sudo xbps-remove -o'
 
 # show nix applications on the desktop environment
-if [ -n ${XDG_SESSION_ID} ];then
+if [ -n \${XDG_SESSION_ID} ];then
     if [ -d ~/.nix-profile ];then
-        for x in $(find ~/.nix-profile/share/applications/*.desktop);do
-            MY_XDG_DIRS=$(dirname $(dirname $(readlink -f $x))):${MY_XDG_DIRS}
+        for x in \$(find ~/.nix-profile/share/applications/*.desktop);do
+            MY_XDG_DIRS=\$(dirname \$(dirname \$(readlink -f \$x))):\${MY_XDG_DIRS}
         done
-        export XDG_DATA_DIRS=${MY_XDG_DIRS}:${XDG_DATA_DIRS}
+        export XDG_DATA_DIRS=\${MY_XDG_DIRS}:\${XDG_DATA_DIRS}
     fi
 fi
 EOBSHPROFILE
