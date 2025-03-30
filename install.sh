@@ -164,7 +164,7 @@ xchroot /mnt flatpak remote-add --if-not-exists flathub https://dl.flathub.org/r
 
 # Set up XBPS-SRC
 git clone https://github.com/void-linux/void-packages.git /mnt/home/$USER_NAME/void-packages
-xchroot /mnt chown -R $USER_NAME:$USER_NAME /mnt/home/$USER_NAME/void-packages
+xchroot /mnt chown -R $USER_NAME:$USER_NAME /home/$USER_NAME/void-packages
 xchroot /mnt su - $USER_NAME -c "cd void-packages && ./xbps-src binary-bootstrap"
 echo XBPS_ALLOW_RESTRICTED=yes >> /mnt/etc/conf
 
