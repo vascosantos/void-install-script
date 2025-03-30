@@ -225,11 +225,7 @@ echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
 # Set up NIX
 mkdir -p /mnt/home/$USER_NAME/.config/nixpkgs
 echo "{ allowUnfree = true; }" > /mnt/home/$USER_NAME/.config/nixpkgs/config.nix
-xchroot /mnt /bin/bash << NIXEOF
-sv up nix-daemon
-nix-channel --add http://nixos.org/channels/nixpkgs-unstable
-nix-channel --update
-NIXEOF
+xchroot /mnt sv up nix-daemon && nix-channel --add http://nixos.org/channels/nixpkgs-unstable && nix-channel --update
 
 # Setup .bash_profile
 cat << EOBSHPROFILE >> /mnt/$USER_NAME/.bash_profile
