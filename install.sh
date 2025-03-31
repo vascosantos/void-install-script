@@ -142,7 +142,7 @@ xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy \
   NetworkManager apparmor cronie xtools psmisc gpm socklog-void runit-iptables polkit \
   bluez pipewire wireplumber dbus avahi nss-mdns \
-  gnome gnome-software libreoffice virt-manager \
+  gnome gnome-software firefox libreoffice virt-manager \
   xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome \
   cups foomatic-db foomatic-db-nonfree \
   dejavu-fonts-ttf xorg-fonts noto-fonts-ttf noto-fonts-cjk noto-fonts-emoji nerd-fonts \
@@ -227,7 +227,6 @@ xchroot /mnt sv up nix-daemon && su - $USER_NAME -c "nix-channel --add http://ni
 
 # Setup .bash_profile
 cat << EOBSHPROFILE >> /mnt/$USER_NAME/.bash_profile
-
 # my shell aliases
 alias ll='ls -lash'
 alias xin='sudo xbps-install'
