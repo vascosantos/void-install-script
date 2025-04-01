@@ -2,8 +2,8 @@
 exec > >(tee -ia install.log)
 
 # Global variables
-BOOT_DISK=/dev/vda
-POOL_DISK=/dev/vda
+BOOT_DISK=/dev/nvme0n1
+POOL_DISK=/dev/nvme0n1
 BOOT_PART=1
 POOL_PART=2
 KEYMAP=us-acentos
@@ -12,7 +12,7 @@ ARCH=x86_64
 REPO=https://repo-default.voidlinux.org
 USER_NAME=vasco
 HOST_NAME=morpheus
-ZRAM_COMPRESSOR=zstd    # zram compression algorithm (see https://github.com/atweiden/zramen/blob/master/zramen or check `man zramctl`)
+ZRAM_COMPRESSOR=lz4     # zram compression algorithm (see https://github.com/atweiden/zramen/blob/master/zramen or check `man zramctl`)
 ZRAM_INIT_SIZE_PCT=25   # initial zram size as a percentage of total RAM
 ZRAM_MAX_SIZE_MB=8192   # maximum zram size in MB
 
@@ -131,7 +131,7 @@ cat <<EODRACUTCONF >> /mnt/etc/dracut.conf.d/options.conf
 hostonly="yes"
 nofsck="yes"
 add_dracutmodules+=" zfs "
-omit_dracutmodules+=" btrfs resume "
+omit_dracutmodules+=" btrfs "
 EODRACUTCONF
 
 # Some nvidia fixes
