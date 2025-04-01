@@ -141,7 +141,7 @@ xchroot /mnt ln -s /dev/null /etc/udev/rules.d/61-gdm.rules
 # Install extra packages
 XBPS_ARCH=$ARCH xbps-install -r /mnt -Sy \
   NetworkManager apparmor cronie xtools psmisc gpm socklog-void runit-iptables polkit \
-  bluez pipewire wireplumber dbus avahi nss-mdns \
+  bluez Solaar pipewire wireplumber dbus avahi nss-mdns \
   gnome gnome-software firefox thunderbird libreoffice virt-manager \
   xdg-user-dirs xdg-user-dirs-gtk xdg-utils xdg-desktop-portal xdg-desktop-portal-gtk xdg-desktop-portal-gnome \
   cups foomatic-db foomatic-db-nonfree \
@@ -223,10 +223,11 @@ echo "vm.swappiness = 10" >> /mnt/etc/sysctl.conf.d/99-swappiness.conf
 # Set up NIX
 mkdir -p /mnt/home/$USER_NAME/.config/nixpkgs
 echo "{ allowUnfree = true; }" > /mnt/home/$USER_NAME/.config/nixpkgs/config.nix
-xchroot /mnt sv up nix-daemon && su - $USER_NAME -c "nix-channel --add http://nixos.org/channels/nixpkgs-unstable && nix-channel --update"
+# xchroot /mnt sv up nix-daemon && su - $USER_NAME -c "nix-channel --add http://nixos.org/channels/nixpkgs-unstable && nix-channel --update"
 
 # Setup .bash_profile
-cat << EOBSHPROFILE >> /mnt/$USER_NAME/.bash_profile
+cat << EOBSHPROFILE >> /mnt/home/$USER_NAME/.bash_profile
+
 # my shell aliases
 alias ll='ls -lash'
 alias xin='sudo xbps-install'
